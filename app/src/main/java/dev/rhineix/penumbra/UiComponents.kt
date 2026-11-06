@@ -71,6 +71,11 @@ import kotlinx.coroutines.withContext
 @Composable internal fun ConfirmDialog(dialog: AppDialog?, onDismiss: () -> Unit) {
     var draft by remember(dialog) { mutableStateOf(when(dialog) {is AppDialog.Input -> dialog.initial;else -> ""}) }
     var choice by remember(dialog) { mutableIntStateOf((dialog as? AppDialog.Choice)?.selected ?: 0) }
+    val colors=COUITheme.colorScheme
+    val cancel={
+        if(dialog is AppDialog.Choice) dialog.preview?.invoke(dialog.selected)
+        onDismiss()
+    }
     val title=when(dialog) {
         is AppDialog.Confirm -> dialog.title
         is AppDialog.Choice -> dialog.title
@@ -82,14 +87,20 @@ import kotlinx.coroutines.withContext
         is AppDialog.Confirm -> dialog.message
         is AppDialog.Error -> dialog.message
         else -> null
-    },largeScreen=true,onDismissRequest=onDismiss) {
+    },largeScreen=true,onDismissRequest=cancel) {
         Column(Modifier.fillMaxWidth()) {
             when(dialog) {
-                is AppDialog.Input -> TextField(value=draft,onValueChange={draft=it.take(40)},label=dialog.label,singleLine=true,modifier=Modifier.fillMaxWidth().padding(horizontal=24.dp,vertical=12.dp))
-                is AppDialog.Confirm -> if(dialog.requireEraseText) TextField(value=draft,onValueChange={draft=it},label="Type REMOVE to confirm",singleLine=true,modifier=Modifier.fillMaxWidth().padding(horizontal=24.dp,vertical=12.dp))
+                is AppDialog.Input -> TextField(value=draft,onValueChange={draft=it.take(40)},label=dialog.label,singleLine=true,
+                    textStyle=TextFieldDefaults.textStyle(TextFieldMode.Line).copy(color=colors.onSurface),
+                    colors=TextFieldDefaults.textFieldColors(labelColor=colors.onSurfaceSecondary),
+                    modifier=Modifier.fillMaxWidth().padding(horizontal=24.dp,vertical=12.dp))
+                is AppDialog.Confirm -> if(dialog.requireEraseText) TextField(value=draft,onValueChange={draft=it},label="Type REMOVE to confirm",singleLine=true,
+                    textStyle=TextFieldDefaults.textStyle(TextFieldMode.Line).copy(color=colors.onSurface),
+                    colors=TextFieldDefaults.textFieldColors(labelColor=colors.onSurfaceSecondary),
+                    modifier=Modifier.fillMaxWidth().padding(horizontal=24.dp,vertical=12.dp))
                 is AppDialog.Choice -> Column(Modifier.heightIn(max=330.dp).verticalScroll(rememberScrollState())) {
                     dialog.options.forEachIndexed { index,(label,summary) ->
-                        RadioButtonPreference(title=label,summary=summary.ifBlank { null },selected=choice==index,onClick={choice=index})
+                        RadioButtonPreference(title=label,summary=summary.ifBlank { null },selected=choice==index,onClick={choice=index;dialog.preview?.invoke(index)})
                     }
                 }
                 else -> Unit
@@ -121,7 +132,7 @@ import kotlinx.coroutines.withContext
                     TextButton(positive,apply,enabled=enabled,colors=ButtonDefaults.textButtonColorsBorderless(textColor=COUITheme.colorScheme.error))
                 }
             } else DialogButtonBar(
-                negative=if(dialog is AppDialog.Error) null else DialogButtonBarAction("Cancel",onClick=onDismiss),
+                negative=if(dialog is AppDialog.Error) null else DialogButtonBarAction("Cancel",onClick=cancel),
                 positive=DialogButtonBarAction(positive,enabled,onClick=apply),
             )
         }

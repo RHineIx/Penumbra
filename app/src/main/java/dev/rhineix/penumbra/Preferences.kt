@@ -10,7 +10,7 @@ class Preferences(context: Context) {
     init {
         // Upgrade to the current settings schema while retaining profile and appearance choices.
         if (store.getInt("settingsSchema", 0) < 2) {
-            val retained = setOf("language", "theme", "accent", "accent_v2", "navigationBlur", "captureGuard",
+            val retained = setOf("language", "theme", "accent", "accent_v2", "monet", "navigationBlur", "captureGuard",
                 "showSystem", "profileName", "managedPackages", "pendingWorkCopy", "pendingWorkCopyTime",
                 "pendingWorkCopyProfile", "sharing.toPersonal", "sharing.openWorkFilesInPersonal",
                 "sharing.openWorkLinksInPersonal")

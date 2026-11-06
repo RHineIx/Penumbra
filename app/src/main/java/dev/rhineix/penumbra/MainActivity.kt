@@ -98,10 +98,11 @@ class MainActivity : EnglishActivity() {
     }
 }
 
-@Composable internal fun PenumbraTheme(prefs: Preferences, theme: String=prefs.text("theme","system"), accent: String=prefs.text("accent_v2","blue"), content: @Composable () -> Unit) {
+@Composable internal fun PenumbraTheme(prefs: Preferences, theme: String=prefs.text("theme","system"), accent: String=prefs.text("accent_v2","blue"), monet: Boolean=prefs.bool("monet"), content: @Composable () -> Unit) {
     val dark=theme=="dark" || theme=="system" && isSystemInDarkTheme()
     val seed=when(accent) {"violet" -> if(dark) Color(0xFFB9A2FF) else Color(0xFF7045CD);"green" -> if(dark) Color(0xFF74D5B3) else Color(0xFF137452);else -> if(dark) Color(0xFFA7C7FF) else Color(0xFF2463DE)}
-    val colors=if(dark) darkColorScheme(primary=seed,onPrimary=Color(0xFF102033),background=Color(0xFF111315),surface=Color(0xFF1C1F23),onSurfaceContainer=seed)
+    val colors=if(monet && Build.VERSION.SDK_INT>=31) platformDynamicColors(dark)
+        else if(dark) darkColorScheme(primary=seed,onPrimary=Color(0xFF102033),background=Color(0xFF111315),surface=Color(0xFF1C1F23),onSurfaceContainer=seed)
         else lightColorScheme(primary=seed,background=Color(0xFFF3F5F8),surface=Color.White,onSurfaceContainer=seed)
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) { COUITheme(colors=colors,content=content) }
 }
@@ -162,7 +163,7 @@ class MainActivity : EnglishActivity() {
         else activity.window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
     }
     BackHandler(!state.mainPage) {state.back()}
-    PenumbraTheme(state.prefs,state.theme,state.accent) {
+    PenumbraTheme(state.prefs,state.theme,state.accent,state.monet) {
         val colors=COUITheme.colorScheme
         val dark=colors.background.red<.2f
         LaunchedEffect(dark) {
@@ -264,7 +265,7 @@ class MainActivity : EnglishActivity() {
                         item {Hint("Work is an Android profile linked to your primary user. App data stays separate between the two profiles.")}
                     }
                     Page.Apps -> {
-                        item {TextField(state.search,{state.search=it},label="Search apps",backgroundMode=TextFieldMode.Rectangle,singleLine=true,showClearButton=true,leadingIcon={AppIcon(TablerIcons.Search)},modifier=Modifier.fillMaxWidth())}
+                        item {TextField(state.search,{state.search=it},label="Search apps",textStyle=TextFieldDefaults.textStyle(TextFieldMode.Rectangle).copy(color=colors.onSurface),backgroundMode=TextFieldMode.Rectangle,singleLine=true,showClearButton=true,leadingIcon={AppIcon(TablerIcons.Search)},modifier=Modifier.fillMaxWidth())}
                         item {
                             Row(Modifier.fillMaxWidth().padding(horizontal=4.dp),verticalAlignment=Alignment.CenterVertically) {
                                 Text(if(state.loadingApps) "Loading apps…" else "${filtered.size} apps"+when(state.filter) {1 -> " · Active";2 -> " · Frozen";3 -> " · Hidden";else -> ""},fontSize=13.sp,color=colors.onSurfaceSecondary,modifier=Modifier.weight(1f))
@@ -363,8 +364,9 @@ class MainActivity : EnglishActivity() {
                     Page.Appearance -> {
                         item {SectionTitle("Display")
                             SettingsGroup {
-                                SettingsRow("Theme",state.theme.replaceFirstChar {it.uppercase()},TablerIcons.Moon) {state.dialog=AppDialog.Choice("Theme",listOf("System default" to "Follow the device appearance","Light" to "","Dark" to ""),listOf("system","light","dark").indexOf(state.theme).coerceAtLeast(0)) {index ->state.theme=listOf("system","light","dark")[index];state.prefs.set("theme",state.theme)}}
-                                SettingsRow("Accent color",state.accent.replaceFirstChar {it.uppercase()},TablerIcons.Palette) {state.dialog=AppDialog.Choice("Accent color",listOf("Blue" to "","Violet" to "","Green" to ""),listOf("blue","violet","green").indexOf(state.accent).coerceAtLeast(0)) {index ->state.accent=listOf("blue","violet","green")[index];state.prefs.set("accent_v2",state.accent)}}
+                                SettingsRow("Theme",state.theme.replaceFirstChar {it.uppercase()},TablerIcons.Moon) {state.dialog=AppDialog.Choice("Theme",listOf("System default" to "Follow the device appearance","Light" to "","Dark" to ""),listOf("system","light","dark").indexOf(state.theme).coerceAtLeast(0),preview={index ->state.theme=listOf("system","light","dark")[index]}) {index ->state.theme=listOf("system","light","dark")[index];state.prefs.set("theme",state.theme)}}
+                                SettingsRow("Accent color",if(state.monet) "Controlled by Monet" else state.accent.replaceFirstChar {it.uppercase()},TablerIcons.Palette,!state.monet) {state.dialog=AppDialog.Choice("Accent color",listOf("Blue" to "","Violet" to "","Green" to ""),listOf("blue","violet","green").indexOf(state.accent).coerceAtLeast(0),preview={index ->state.accent=listOf("blue","violet","green")[index]}) {index ->state.accent=listOf("blue","violet","green")[index];state.prefs.set("accent_v2",state.accent)}}
+                                SettingsToggle("Monet colors",if(Build.VERSION.SDK_INT>=31) "Use your system wallpaper palette" else "Requires Android 12 or later",TablerIcons.Palette,state.monet,Build.VERSION.SDK_INT>=31) {state.monet=it;state.prefs.set("monet",it)}
                                 SettingsToggle("Blur navigation bar","Subtle background blur behind the bottom navigation",TablerIcons.Adjustments,state.navigationBlur) {state.navigationBlur=it;state.prefs.set("navigationBlur",it)}
                             }
                         }
@@ -395,15 +397,13 @@ class MainActivity : EnglishActivity() {
                             BasicComponent(title="Package",summary=BuildConfig.APPLICATION_ID)
                             BasicComponent(title="Android support",summary="Android 11 and later · Target API 37")
                             BasicComponent(title="Interface",summary="COUI 1.1.0 · Haze 2.1.0 · Tabler Icons")
+                            BasicComponent(title="Developer",summary="RHine.",startAction={AppIcon(TablerIcons.User)})
+                            SettingsRow("Repository","github.com/RHineIx/Penumbra",TablerIcons.BrandGithub) {
+                                state.launch {activity.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse("https://github.com/RHineIx/Penumbra")))}
+                            }
                         }}
                         item {Hint("An independent work-profile manager. App settings and action logs stay on this device. No advertising or analytics.")}
-                        item {SectionTitle("Open source")
-                            SettingsGroup {
-                                BasicComponent(title="COUI",summary="suqi8 and the COUI / Miuix contributors · Apache 2.0")
-                                BasicComponent(title="Haze",summary="Chris Banes and contributors · Apache 2.0")
-                                BasicComponent(title="Tabler Icons",summary="Tabler contributors · MIT. Compose bindings by DevSrSouza.")
-                            }
-                        }
+
                     }
                 }
             }

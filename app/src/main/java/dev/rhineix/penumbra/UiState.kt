@@ -15,6 +15,7 @@ internal sealed interface AppDialog {
     data class Confirm(val title: String, val message: String, val action: String, val danger: Boolean = false,
         val requireEraseText: Boolean = false, val confirm: () -> Unit) : AppDialog
     data class Choice(val title: String, val options: List<Pair<String,String>>, val selected: Int,
+        val preview: ((Int) -> Unit)? = null,
         val apply: (Int) -> Unit) : AppDialog
     data class Input(val title: String, val label: String, val initial: String, val save: (String) -> Unit) : AppDialog
     data class Error(val message: String) : AppDialog
@@ -36,6 +37,7 @@ internal class UiState(val activity: MainActivity) {
     var revision by mutableIntStateOf(0)
     var theme by mutableStateOf(prefs.text("theme", "system"))
     var accent by mutableStateOf(prefs.text("accent_v2", "blue"))
+    var monet by mutableStateOf(android.os.Build.VERSION.SDK_INT>=31 && prefs.bool("monet"))
     var navigationBlur by mutableStateOf(prefs.bool("navigationBlur", true))
     var captureGuard by mutableStateOf(prefs.bool("captureGuard"))
     var showSystem by mutableStateOf(prefs.bool("showSystem"))

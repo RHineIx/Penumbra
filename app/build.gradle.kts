@@ -10,8 +10,8 @@ android {
         applicationId = "dev.rhineix.penumbra"
         minSdk = 30
         targetSdk = 37
-        versionCode = providers.gradleProperty("APP_VERSION_CODE").orElse("7").get().toInt().also { require(it in 1..2_100_000_000) }
-        versionName = providers.gradleProperty("APP_VERSION_NAME").orElse("0.3.2").get().also {
+        versionCode = providers.gradleProperty("APP_VERSION_CODE").orElse("8").get().toInt().also { require(it in 1..2_100_000_000) }
+        versionName = providers.gradleProperty("APP_VERSION_NAME").orElse("0.3.3").get().also {
             require(Regex("[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?").matches(it)) { "Invalid release version" }
         }
         ndk { abiFilters += "arm64-v8a" }

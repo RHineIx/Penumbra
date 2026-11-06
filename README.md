@@ -2,7 +2,7 @@
 
 A Kotlin work-profile manager for Android. Package: `dev.rhineix.penumbra`.
 
-**Version 0.3.2 · Android 11+ · Target Android 17 · English only**
+**Version 0.3.3 · Android 11+ · Target Android 17 · English only**
 
 ## Features
 
@@ -13,7 +13,7 @@ A Kotlin work-profile manager for Android. Package: `dev.rhineix.penumbra`.
 - Control sharing in both directions, opening Work files and links in personal apps, outgoing clipboard, Bluetooth sharing and unknown-source installation.
 - Manage supported camera, screenshot, contact-search and caller-ID policies.
 - Profile name, lock shortcuts, profile deletion confirmation and a Quick Settings shortcut.
-- COUI preferences/dialogs, Haze navigation blur, Tabler Icons, dark/light themes and configurable accents.
+- COUI preferences/dialogs, Haze navigation blur, Tabler Icons, dark/light themes, live appearance previews, configurable accents and Android 12+ Monet wallpaper colors.
 
 Android and device policies can restrict individual actions. Penumbra manages only its own work profile. An existing managed profile can prevent setup. Removing a work profile permanently deletes its work apps and data.
 
@@ -55,24 +55,41 @@ Output: `app/build/outputs/apk/release/app-release-unsigned.apk`.
 | Compose Icons Tabler bindings | 1.1.1 |
 | Coroutines | 1.11.0 |
 
-R8 and resource shrinking are enabled. The release signing configuration is empty. The build accepts `-PAPP_VERSION_NAME=0.3.2 -PAPP_VERSION_CODE=7` overrides.
+R8 and resource shrinking are enabled. The release signing configuration is empty. The build accepts `-PAPP_VERSION_NAME=0.3.3 -PAPP_VERSION_CODE=8` overrides.
 
 ## GitHub Releases
 
 [Release workflow](.github/workflows/release.yml) builds and publishes when a `v*` tag is pushed:
 
 ```sh
-git tag v0.3.2
-git push origin v0.3.2
+git tag v0.3.3
+git push origin v0.3.3
 ```
 
 It can also be run manually from Actions by entering an existing release tag. It checks out that tag, installs the SDK/JDK, builds the Release APK, runs Android Lint, verifies unsigned/arm64/16 KiB packaging, uploads workflow artifacts and publishes a GitHub Release with:
 
-- Unsigned arm64 Release APK.
+- Signed and unsigned arm64 Release APKs.
 - Clean source ZIP from the tagged Git tree.
 - SHA-256 checksums and build metadata.
 
-No signing secrets are required. The version name comes from the tag. The version code is `6 + the number of v* tags`; keep release tags and publish them in order. The first tag produces version code 7.
+The release workflow uses the same repository secret names as Umbra:
+
+- `KEYSTORE_BASE64`: base64-encoded existing release keystore.
+- `KEYSTORE_PASSWORD`: keystore password.
+- `KEY_ALIAS`: signing key alias.
+- `KEY_PASSWORD`: key password.
+
+Add these under Settings → Secrets and variables → Actions in the Penumbra repository. Repository secrets are scoped to their repository; the workflow cannot read or copy Umbra's secret values. Use the same certificate that signed the installed Penumbra to preserve update compatibility. Keys are decoded only under the runner's temporary directory and cleaned up even after failures.
+
+The release includes both a signed APK and an unsigned APK, along with the source archive and checksums. The local Gradle build remains unsigned. A separate Build workflow verifies main/PR changes and uploads an unsigned APK without signing secrets.
+
+The version name comes from the tag. The version code is `6 + the number of v* tags`; keep release tags and publish them in order. The first tag produces version code 7.
+
+## Appearance
+
+Theme and manual accent choices preview immediately while the picker is open. Done saves the selection; Cancel restores the previous appearance. Monet follows the system wallpaper palette on Android 12+, uses COUI's dynamic-color support and preserves the previous manual accent when switched off. Input text, hints and cursors follow the current theme, including dialogs.
+
+About includes the developer RHine. and a clickable repository link. Third-party license notices remain in this repository.
 
 ## License
 
