@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing release tag, for example v0.3.3'
+        description: 'Existing release tag, for example v0.3.5'
         required: true
         type: string
 
@@ -23,9 +23,9 @@ env:
   BUILD_TOOLS_VERSION: '37.0.0'
 
 jobs:
-  build:
+  release:
     if: ${{ github.event_name != 'push' || (github.event.created && !github.event.deleted) }}
-    name: Build and Publish
+    name: Build and publish signed APK
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -48,7 +48,7 @@ jobs:
           packages: platform-tools
           log-accepted-android-sdk-licenses: false
 
-      - name: Install Android SDK packages
+      - name: Install SDK packages
         run: sdkmanager 'platforms;android-37.2' "build-tools;$BUILD_TOOLS_VERSION"
 
       - name: Set up Gradle
@@ -60,28 +60,22 @@ jobs:
           TAG_NAME: ${{ inputs.tag || github.ref_name }}
         run: |
           set -euo pipefail
-          VERSION_NAME="${TAG_NAME#v}"
           [[ "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || {
             echo 'Use a vMAJOR.MINOR.PATCH tag with an optional prerelease suffix.' >&2
             exit 1
           }
           TAG_COMMIT="$(git rev-parse --verify "refs/tags/${TAG_NAME}^{commit}")"
-          [[ "$TAG_COMMIT" == "$(git rev-parse HEAD)" ]] || {
-            echo 'The checked-out commit does not match the release tag.' >&2
-            exit 1
-          }
+          [[ "$TAG_COMMIT" == "$(git rev-parse HEAD)" ]] || exit 1
           TAG_COUNT="$(git tag --list 'v*' | wc -l | tr -d '[:space:]')"
           [[ "$TAG_COUNT" =~ ^[1-9][0-9]*$ ]] || exit 1
-          VERSION_CODE=$((6 + TAG_COUNT))
           {
-            echo "version_name=$VERSION_NAME"
-            echo "version_code=$VERSION_CODE"
-            echo "tag_name=$TAG_NAME"
+            echo "name=${TAG_NAME#v}"
+            echo "code=$((6 + TAG_COUNT))"
+            echo "tag=$TAG_NAME"
             echo "commit=$TAG_COMMIT"
           } >> "$GITHUB_OUTPUT"
-          echo "Building Penumbra $VERSION_NAME (versionCode $VERSION_CODE)"
 
-      - name: Prepare release signing key
+      - name: Prepare signing key
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -99,84 +93,61 @@ jobs:
           printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/penumbra-signing.jks"
           test -s "$RUNNER_TEMP/penumbra-signing.jks"
 
-      - name: Build unsigned arm64 Release and run Android Lint
+      - name: Build Release and run Android Lint
         env:
-          VERSION_NAME: ${{ steps.version.outputs.version_name }}
-          VERSION_CODE: ${{ steps.version.outputs.version_code }}
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
         run: |
           set -euo pipefail
-          chmod +x ./gradlew
+          chmod +x gradlew
           ./gradlew :app:assembleRelease :app:lintRelease --no-daemon --stacktrace \
-            -PAPP_VERSION_NAME="$VERSION_NAME" \
-            -PAPP_VERSION_CODE="$VERSION_CODE"
+            -PAPP_VERSION_NAME="$VERSION_NAME" -PAPP_VERSION_CODE="$VERSION_CODE"
 
-      - name: Verify APK and prepare release assets
+      - name: Sign and verify APK
+        id: apk
         env:
-          TAG_NAME: ${{ steps.version.outputs.tag_name }}
-          VERSION_NAME: ${{ steps.version.outputs.version_name }}
-          VERSION_CODE: ${{ steps.version.outputs.version_code }}
-          BUILD_COMMIT: ${{ steps.version.outputs.commit }}
+          TAG_NAME: ${{ steps.version.outputs.tag }}
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          APK='app/build/outputs/apk/release/app-release-unsigned.apk'
-          test -s "$APK"
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION"
+          INPUT_APK='app/build/outputs/apk/release/app-release-unsigned.apk'
+          SIGNED_APK="$RUNNER_TEMP/penumbra-release/Penumbra-${TAG_NAME}-release-arm64.apk"
+          test -s "$INPUT_APK"
+          mkdir -p "$(dirname "$SIGNED_APK")"
+          "$BUILD_TOOLS/zipalign" -c -P 16 4 "$INPUT_APK"
+          "$BUILD_TOOLS/apksigner" sign --ks "$RUNNER_TEMP/penumbra-signing.jks" \
+            --ks-pass env:KEYSTORE_PASSWORD --key-pass env:KEY_PASSWORD --ks-key-alias "$KEY_ALIAS" \
+            --v4-signing-enabled false --out "$SIGNED_APK" "$INPUT_APK"
+          "$BUILD_TOOLS/apksigner" verify --verbose "$SIGNED_APK"
+          "$BUILD_TOOLS/zipalign" -c -P 16 4 "$SIGNED_APK"
+          BADGING="$("$BUILD_TOOLS/aapt" dump badging "$SIGNED_APK")"
+          grep -Fq "name='dev.rhineix.penumbra' versionCode='$VERSION_CODE' versionName='$VERSION_NAME'" <<< "$BADGING"
           while IFS= read -r entry; do
             if [[ "$entry" == lib/*.so && "$entry" != lib/arm64-v8a/*.so ]]; then
               echo "Unexpected native ABI: $entry" >&2
               exit 1
             fi
-          done < <(unzip -Z1 "$APK")
-          if "$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner" verify "$APK" >/dev/null 2>&1; then
-            echo 'The local release APK must remain unsigned.' >&2
-            exit 1
-          fi
-          "$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/zipalign" -c -P 16 4 "$APK"
-          BADGING="$("$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/aapt" dump badging "$APK")"
-          grep -Fq "name='dev.rhineix.penumbra' versionCode='$VERSION_CODE' versionName='$VERSION_NAME'" <<< "$BADGING"
-          mkdir -p release_artifacts
-          cp "$APK" "release_artifacts/Penumbra-${TAG_NAME}-release-arm64-unsigned.apk"
-          APKSIGNER="$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner"
-          "$APKSIGNER" sign --ks "$RUNNER_TEMP/penumbra-signing.jks" \
-            --ks-pass env:KEYSTORE_PASSWORD --key-pass env:KEY_PASSWORD --ks-key-alias "$KEY_ALIAS" \
-            --out "release_artifacts/Penumbra-${TAG_NAME}-release-arm64.apk" "$APK"
-          "$APKSIGNER" verify --verbose "release_artifacts/Penumbra-${TAG_NAME}-release-arm64.apk"
-          "$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/zipalign" -c -P 16 4 "release_artifacts/Penumbra-${TAG_NAME}-release-arm64.apk"
-          git archive --format=zip --prefix=Penumbra/ --output="release_artifacts/Penumbra-${TAG_NAME}-source.zip" HEAD
-          (
-            cd release_artifacts
-            sha256sum ./*.apk ./*.zip > SHA256SUMS.txt
-          )
-          {
-            printf 'Penumbra %s (versionCode %s)\n' "$VERSION_NAME" "$VERSION_CODE"
-            printf 'Commit: %s\n' "$BUILD_COMMIT"
-            printf 'Signed and unsigned Release APKs; arm64-v8a only; min API 30; target API 37.\n'
-            printf 'Use the same signing certificate for updates; the unsigned APK is also provided.\n'
-          } > release_artifacts/BUILD.txt
+          done < <(unzip -Z1 "$SIGNED_APK")
+          echo "path=$SIGNED_APK" >> "$GITHUB_OUTPUT"
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: Penumbra-${{ steps.version.outputs.tag_name }}
-          path: release_artifacts/*
-          if-no-files-found: error
-          retention-days: 30
-
-      - name: Publish GitHub Release
+      - name: Publish signed APK
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.version.outputs.tag_name }}
+          tag_name: ${{ steps.version.outputs.tag }}
           target_commitish: ${{ steps.version.outputs.commit }}
-          name: Penumbra ${{ steps.version.outputs.tag_name }}
+          name: Penumbra ${{ steps.version.outputs.tag }}
           generate_release_notes: true
-          prerelease: ${{ contains(steps.version.outputs.version_name, '-') }}
+          prerelease: ${{ contains(steps.version.outputs.name, '-') }}
           fail_on_unmatched_files: true
-          files: release_artifacts/*
+          files: ${{ steps.apk.outputs.path }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
-      - name: Clean signing material
+      - name: Clean signing key
         if: ${{ always() }}
         run: rm -f "$RUNNER_TEMP/penumbra-signing.jks"

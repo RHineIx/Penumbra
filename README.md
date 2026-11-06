@@ -54,7 +54,7 @@ git tag v0.3.5
 git push origin v0.3.5
 ```
 
-Tags follow `vMAJOR.MINOR.PATCH`. The workflow publishes signed and unsigned arm64 APKs, source code and SHA-256 checksums. Signing requires the repository secrets `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS` and `KEY_PASSWORD`. Builds on `main` and pull requests produce an unsigned APK without signing secrets.
+Tags follow `vMAJOR.MINOR.PATCH`. The workflow publishes a single signed arm64 APK. Signing requires the repository secrets `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS` and `KEY_PASSWORD`. Builds on `main` and pull requests validate the app without publishing downloads or using signing secrets.
 
 ## License
 

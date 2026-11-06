@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   build:
-    name: Verify unsigned arm64 Release
+    name: Build and lint
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -53,8 +53,3 @@ jobs:
             exit 1
           fi
           "$ANDROID_HOME/build-tools/37.0.0/zipalign" -c -P 16 4 app/build/outputs/apk/release/app-release-unsigned.apk
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Penumbra-release-arm64-unsigned
-          path: app/build/outputs/apk/release/app-release-unsigned.apk
-          if-no-files-found: error
