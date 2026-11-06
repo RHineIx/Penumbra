@@ -2,7 +2,7 @@
 
 A Kotlin work-profile manager for Android. Package: `dev.rhineix.penumbra`.
 
-**Version 0.3.3 · Android 11+ · Target Android 17 · English only**
+**Version 0.3.4 · Android 11+ · Target Android 17 · English only**
 
 ## Features
 
@@ -55,15 +55,15 @@ Output: `app/build/outputs/apk/release/app-release-unsigned.apk`.
 | Compose Icons Tabler bindings | 1.1.1 |
 | Coroutines | 1.11.0 |
 
-R8 and resource shrinking are enabled. The release signing configuration is empty. The build accepts `-PAPP_VERSION_NAME=0.3.3 -PAPP_VERSION_CODE=8` overrides.
+R8 and resource shrinking are enabled. The release signing configuration is empty. The build accepts `-PAPP_VERSION_NAME=0.3.4 -PAPP_VERSION_CODE=9` overrides.
 
 ## GitHub Releases
 
 [Release workflow](.github/workflows/release.yml) builds and publishes when a `v*` tag is pushed:
 
 ```sh
-git tag v0.3.3
-git push origin v0.3.3
+git tag v0.3.4
+git push origin v0.3.4
 ```
 
 It can also be run manually from Actions by entering an existing release tag. It checks out that tag, installs the SDK/JDK, builds the Release APK, runs Android Lint, verifies unsigned/arm64/16 KiB packaging, uploads workflow artifacts and publishes a GitHub Release with:
@@ -89,7 +89,7 @@ The version name comes from the tag. The version code is `6 + the number of v* t
 
 Theme and manual accent choices preview immediately while the picker is open. Done saves the selection; Cancel restores the previous appearance. Monet follows the system wallpaper palette on Android 12+, uses COUI's dynamic-color support and preserves the previous manual accent when switched off. Input text, hints and cursors follow the current theme, including dialogs.
 
-About includes the developer RHine. and a clickable repository link. Third-party license notices remain in this repository.
+About includes a separate Github button with the repository icon and label. Third-party license notices remain in this repository.
 
 ## License
 

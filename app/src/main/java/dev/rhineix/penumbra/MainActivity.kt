@@ -397,13 +397,19 @@ class MainActivity : EnglishActivity() {
                             BasicComponent(title="Package",summary=BuildConfig.APPLICATION_ID)
                             BasicComponent(title="Android support",summary="Android 11 and later · Target API 37")
                             BasicComponent(title="Interface",summary="COUI 1.1.0 · Haze 2.1.0 · Tabler Icons")
-                            BasicComponent(title="Developer",summary="RHine.",startAction={AppIcon(TablerIcons.User)})
-                            SettingsRow("Repository","github.com/RHineIx/Penumbra",TablerIcons.BrandGithub) {
-                                state.launch {activity.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse("https://github.com/RHineIx/Penumbra")))}
-                            }
                         }}
+                        item {
+                            Button(
+                                onClick={state.launch {activity.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse("https://github.com/RHineIx/Penumbra"))) }},
+                                modifier=Modifier.fillMaxWidth().heightIn(min=52.dp),
+                                colors=ButtonDefaults.buttonColors(color=colors.surface,contentColor=colors.onSurface),
+                            ) {
+                                AppIcon(TablerIcons.BrandGithub,color=colors.onSurfaceSecondary)
+                                Spacer(Modifier.width(10.dp))
+                                Text("Github",color=colors.onSurface,fontWeight=FontWeight.Medium)
+                            }
+                        }
                         item {Hint("An independent work-profile manager. App settings and action logs stay on this device. No advertising or analytics.")}
-
                     }
                 }
             }
