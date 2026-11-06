@@ -38,6 +38,20 @@ jobs:
           set -euo pipefail
           chmod +x gradlew
           ./gradlew :app:assembleRelease :app:lintRelease --no-daemon --stacktrace
+          APK='app/build/outputs/apk/release/app-release-unsigned.apk'
+          test -s "$APK"
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/37.0.0"
+          "$BUILD_TOOLS/aapt" dump badging "$APK" | grep -F "name='dev.rhineix.penumbra'"
+          while IFS= read -r entry; do
+            if [[ "$entry" == lib/*.so && "$entry" != lib/arm64-v8a/*.so ]]; then
+              echo "Unexpected native ABI: $entry" >&2
+              exit 1
+            fi
+          done < <(unzip -Z1 "$APK")
+          if "$BUILD_TOOLS/apksigner" verify "$APK" >/dev/null 2>&1; then
+            echo 'The local release APK must remain unsigned.' >&2
+            exit 1
+          fi
           "$ANDROID_HOME/build-tools/37.0.0/zipalign" -c -P 16 4 app/build/outputs/apk/release/app-release-unsigned.apk
       - uses: actions/upload-artifact@v4
         with:
