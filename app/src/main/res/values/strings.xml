@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name" translatable="false">Penumbra</string>
+    <string name="work_tile">Penumbra Work</string>
+    <style name="Theme.Penumbra" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:colorAccent">#2463DE</item>
+        <item name="android:windowBackground">#F3F5F8</item>
+    </style>
+</resources>

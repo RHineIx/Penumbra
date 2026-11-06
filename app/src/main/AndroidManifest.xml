@@ -1,0 +1,30 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+    <uses-feature android:name="android.software.managed_users" android:required="false" />
+    <!-- Core purpose: manage installed apps, including hidden apps and packages without launcher activities. -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" tools:ignore="QueryAllPackagesPermission" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+    <permission android:name="dev.rhineix.penumbra.permission.BRIDGE" android:protectionLevel="signature" />
+    <uses-permission android:name="dev.rhineix.penumbra.permission.BRIDGE" />
+    <application android:allowBackup="false" android:dataExtractionRules="@xml/data_extraction_rules" android:label="@string/app_name" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher" android:supportsRtl="false" android:theme="@style/Theme.Penumbra" android:usesCleartextTraffic="false">
+        <provider android:name=".ApkTransferProvider" android:authorities="dev.rhineix.penumbra.transfer" android:exported="false" android:grantUriPermissions="true" />
+        <activity android:name=".InstallResultActivity" android:exported="false" android:excludeFromRecents="true" />
+        <activity android:name=".MainActivity" android:exported="true">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+        </activity>
+        <receiver android:name=".PenumbraAdmin" android:permission="android.permission.BIND_DEVICE_ADMIN" android:exported="true">
+            <meta-data android:name="android.app.device_admin" android:resource="@xml/device_admin" />
+            <intent-filter><action android:name="android.app.action.DEVICE_ADMIN_ENABLED" /><action android:name="android.app.action.PROFILE_PROVISIONING_COMPLETE" /><action android:name="android.intent.action.MY_PACKAGE_REPLACED" /></intent-filter>
+        </receiver>
+        <activity android:name=".ProvisioningActivity" android:exported="true" android:permission="android.permission.BIND_DEVICE_ADMIN">
+            <intent-filter><action android:name="android.app.action.GET_PROVISIONING_MODE" /><category android:name="android.intent.category.DEFAULT" /></intent-filter>
+            <intent-filter><action android:name="android.app.action.ADMIN_POLICY_COMPLIANCE" /><category android:name="android.intent.category.DEFAULT" /></intent-filter>
+        </activity>
+        <activity android:name=".BridgeActivity" android:exported="true" android:permission="dev.rhineix.penumbra.permission.BRIDGE" android:excludeFromRecents="true">
+            <intent-filter><action android:name="dev.rhineix.penumbra.action.WORK" /><category android:name="android.intent.category.DEFAULT" /></intent-filter>
+        </activity>
+        <service android:name=".WorkTile" android:label="@string/work_tile" android:icon="@drawable/ic_work" android:exported="true" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
+    </application>
+</manifest>
