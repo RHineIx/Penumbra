@@ -77,7 +77,10 @@ class ProfileEngine(val context: Context) {
         try { configureBridge() }
         catch (e: Exception) {
             prefs.set(key, previous)
-            runCatching { configureBridge() }
+            runCatching { configureBridge() }.onFailure {
+                prefs.log("Sharing rollback failed: ${it.message}")
+                e.addSuppressed(it)
+            }
             throw e
         }
         prefs.log("$key=$allowed")
@@ -217,10 +220,27 @@ class ProfileEngine(val context: Context) {
     fun restriction(key: String, enabled: Boolean) {
         requireOwner()
         check(key in RESTRICTIONS) { "Unsupported policy" }
-        if (enabled) dpm.addUserRestriction(admin, key) else dpm.clearUserRestriction(admin, key)
-        check(users.hasUserRestriction(key) == enabled) { "A parent policy prevents changing this setting" }
-        if (key == UserManager.DISALLOW_SHARE_INTO_MANAGED_PROFILE) configureBridge()
+        // Save only our own policy, so rollback never turns another admin's restriction
+        // into a permanent Penumbra restriction.
+        val previous = dpm.getUserRestrictions(admin).getBoolean(key)
+        try {
+            applyRestriction(key, enabled)
+            check(users.hasUserRestriction(key) == enabled) { "A parent policy prevents changing this setting" }
+            if (key == UserManager.DISALLOW_SHARE_INTO_MANAGED_PROFILE) configureBridge()
+        } catch (e: Exception) {
+            runCatching {
+                applyRestriction(key, previous)
+                if (key == UserManager.DISALLOW_SHARE_INTO_MANAGED_PROFILE) configureBridge()
+            }.onFailure {
+                prefs.log("Policy rollback failed: ${it.message}")
+                e.addSuppressed(it)
+            }
+            throw e
+        }
         prefs.log("Policy $key=$enabled")
+    }
+    private fun applyRestriction(key: String, enabled: Boolean) {
+        if (enabled) dpm.addUserRestriction(admin, key) else dpm.clearUserRestriction(admin, key)
     }
     fun screenshots(block: Boolean) { requireOwner(); dpm.setScreenCaptureDisabled(admin, block); prefs.log("Screen capture blocked=$block") }
     fun camera(block: Boolean) { requireOwner(); dpm.setCameraDisabled(admin,block); prefs.log("Work camera blocked=$block") }
@@ -302,6 +322,9 @@ class ProfileEngine(val context: Context) {
             val sharing = sharingOptions()
             appendLine("Sharing Work -> Personal: ${sharing.toPersonal}")
             appendLine("Sharing Personal -> Work: ${sharing.toWork}")
+            appendLine("Save Work files in Personal / pick Work files from Personal: ${sharing.toPersonal}")
+            appendLine("Save Personal files in Work / pick Personal files from Work: ${sharing.toWork}")
+            appendLine("Cross-profile folder access: ${sharing.toPersonal && sharing.toWork}")
             appendLine("Open Work files in Personal: ${sharing.workFilesInPersonal}")
             appendLine("Open Work links in Personal: ${sharing.workLinksInPersonal}")
             appendLine("Block unknown sources: ${users.hasUserRestriction(UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES)}")

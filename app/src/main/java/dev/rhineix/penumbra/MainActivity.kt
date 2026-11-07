@@ -84,12 +84,13 @@ class MainActivity : EnglishActivity() {
         packageManager.setComponentEnabledSetting(ComponentName(this,BridgeActivity::class.java),
             if(managed) PackageManager.COMPONENT_ENABLED_STATE_ENABLED else PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
             PackageManager.DONT_KILL_APP)
-        runCatching { ProfileEngine(this).repairBridgeIfOwner() }
-            .onFailure { Preferences(this).log("Bridge repair: ${it.message}") }
         setContent { PenumbraApp(this) }
     }
     override fun onPostResume() {
         super.onPostResume()
+        // Also repair after returning from Android settings, where sharing policies may change.
+        runCatching { ProfileEngine(this).repairBridgeIfOwner() }
+            .onFailure { Preferences(this).log("Bridge repair: ${it.message}") }
         ProfileEngine(this).resumePendingCopy()
     }
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -319,12 +320,12 @@ class MainActivity : EnglishActivity() {
                         item {SectionTitle("Sharing between profiles")
                             SettingsGroup {
                                 val sharing=remember(state.revision) {engine.sharingOptions()}
-                                SettingsToggle("Allow sharing to personal","Share work photos, files and text with personal apps",TablerIcons.Share,sharing.toPersonal,engine.canManage && !state.busy) {state.execute(scope) {engine.setSharingToPersonalAllowed(it)}}
-                                SettingsToggle("Allow sharing to work","Share personal photos, files and text with work apps",TablerIcons.Copy,sharing.toWork,engine.canManage && !state.busy) {state.execute(scope) {engine.setSharingToWorkAllowed(it)}}
+                                SettingsToggle("Allow sharing to personal","Share or save work content in Personal, and select work files from personal apps",TablerIcons.Share,sharing.toPersonal,engine.canManage && !state.busy) {state.execute(scope) {engine.setSharingToPersonalAllowed(it)}}
+                                SettingsToggle("Allow sharing to work","Share or save personal content in Work, and select personal files from work apps",TablerIcons.Copy,sharing.toWork,engine.canManage && !state.busy) {state.execute(scope) {engine.setSharingToWorkAllowed(it)}}
                                 SettingsToggle("Open work files in personal apps","Include personal apps when opening a work file",TablerIcons.File,sharing.workFilesInPersonal,engine.canManage && !state.busy) {state.execute(scope) {engine.setWorkFilesInPersonalAllowed(it)}}
                                 SettingsToggle("Open work links in personal apps","Include personal browsers and apps for work web links",TablerIcons.World,sharing.workLinksInPersonal,engine.canManage && !state.busy) {state.execute(scope) {engine.setWorkLinksInPersonalAllowed(it)}}
                             }
-                            Hint("Choose the destination in Android’s share or open-with menu. Clipboard restrictions are controlled separately below.")
+                            Hint("Choose Personal or Work in Android’s share, open-with or file picker. Folder access requires sharing in both directions. Close and reopen an existing picker after changing these controls. Clipboard restrictions are controlled separately below.")
                         }
                         item {SectionTitle("Clipboard & installation")
                             SettingsGroup {
