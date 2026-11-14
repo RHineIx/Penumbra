@@ -65,10 +65,14 @@ class ProfileEngine(val context: Context) {
         toWork = !users.hasUserRestriction(UserManager.DISALLOW_SHARE_INTO_MANAGED_PROFILE),
         workFilesInPersonal = prefs.bool(OPEN_WORK_FILES, true),
         workLinksInPersonal = prefs.bool(OPEN_WORK_LINKS, true),
+        personalFilesInWork = prefs.bool(OPEN_PERSONAL_FILES, true),
+        personalLinksInWork = prefs.bool(OPEN_PERSONAL_LINKS, true),
     )
     fun setSharingToPersonalAllowed(allowed: Boolean) = setSharingOption(SHARE_TO_PERSONAL, allowed)
     fun setWorkFilesInPersonalAllowed(allowed: Boolean) = setSharingOption(OPEN_WORK_FILES, allowed)
     fun setWorkLinksInPersonalAllowed(allowed: Boolean) = setSharingOption(OPEN_WORK_LINKS, allowed)
+    fun setPersonalFilesInWorkAllowed(allowed: Boolean) = setSharingOption(OPEN_PERSONAL_FILES, allowed)
+    fun setPersonalLinksInWorkAllowed(allowed: Boolean) = setSharingOption(OPEN_PERSONAL_LINKS, allowed)
     fun setSharingToWorkAllowed(allowed: Boolean) = restriction(UserManager.DISALLOW_SHARE_INTO_MANAGED_PROFILE, !allowed)
     private fun setSharingOption(key: String, allowed: Boolean) {
         requireOwner()
@@ -88,6 +92,19 @@ class ProfileEngine(val context: Context) {
     /** Repair old installations without resetting profile policies or data. */
     fun repairBridgeIfOwner() {
         if (canManage) configureBridge()
+    }
+    /** Policy restrictions and per-source install permission are independent Android checks. */
+    fun installationBlockReason(): String? {
+        requireOwner()
+        return when {
+            users.hasUserRestriction(UserManager.DISALLOW_INSTALL_APPS) ->
+                "Android policy blocks installing apps in Work. Check the device or profile administrator settings."
+            users.hasUserRestriction(UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES_GLOBALLY) ->
+                "A device policy blocks unknown sources. A profile setting cannot override another administrator's restriction."
+            users.hasUserRestriction(UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES) ->
+                "Turn off Block unknown sources in the work copy of Penumbra under Privacy controls, then try again."
+            else -> null
+        }
     }
     internal fun copyIntent(pkg: String): Intent = Intent(BRIDGE_ACTION)
         .addCategory(Intent.CATEGORY_DEFAULT).apply {
@@ -327,7 +344,16 @@ class ProfileEngine(val context: Context) {
             appendLine("Cross-profile folder access: ${sharing.toPersonal && sharing.toWork}")
             appendLine("Open Work files in Personal: ${sharing.workFilesInPersonal}")
             appendLine("Open Work links in Personal: ${sharing.workLinksInPersonal}")
-            appendLine("Block unknown sources: ${users.hasUserRestriction(UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES)}")
+            appendLine("Open Personal files in Work: ${sharing.toWork && sharing.personalFilesInWork}")
+            appendLine("Open Personal links in Work: ${sharing.toWork && sharing.personalLinksInWork}")
+            appendLine("Expected cross-profile routes: ${CrossProfileRoutes.build(sharing).size}")
+            appendLine("Penumbra install-source permission: ${context.packageManager.canRequestPackageInstalls()}")
+            val ownRestrictions = dpm.getUserRestrictions(admin)
+            val restrictions = RESTRICTIONS + setOf(UserManager.DISALLOW_INSTALL_APPS,
+                UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES_GLOBALLY, UserManager.DISALLOW_UNINSTALL_APPS)
+            restrictions.sorted().forEach { key ->
+                appendLine("Restriction $key: effective=${users.hasUserRestriction(key)}; Penumbra=${ownRestrictions.getBoolean(key)}")
+            }
         }
         appendLine("\nLocal action log (may contain package names):\n${prefs.text("log")}")
     }
@@ -335,6 +361,8 @@ class ProfileEngine(val context: Context) {
         private const val SHARE_TO_PERSONAL = "sharing.toPersonal"
         private const val OPEN_WORK_FILES = "sharing.openWorkFilesInPersonal"
         private const val OPEN_WORK_LINKS = "sharing.openWorkLinksInPersonal"
+        private const val OPEN_PERSONAL_FILES = "sharing.openPersonalFilesInWork"
+        private const val OPEN_PERSONAL_LINKS = "sharing.openPersonalLinksInWork"
         private const val PENDING_COPY = "pendingWorkCopy"
         private const val PENDING_COPY_TIME = "pendingWorkCopyTime"
         private const val PENDING_COPY_PROFILE = "pendingWorkCopyProfile"

@@ -23,7 +23,9 @@ object WorkInstaller {
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
     fun install(context: Context, pkg: String, uris: List<Uri>) {
-        ProfileEngine(context).requireOwner()
+        val engine = ProfileEngine(context)
+        engine.requireOwner()
+        engine.installationBlockReason()?.let { error(it) }
         require(uris.isNotEmpty() && uris.size <= 256) { "Missing APK files; retry from the personal copy" }
         uris.forEach { uri ->
             require(uri.scheme == "content" && uri.authority?.substringAfter('@') == "${context.packageName}.transfer" && uri.pathSegments.take(2) == listOf("apk",pkg)) { "Unexpected APK source" }

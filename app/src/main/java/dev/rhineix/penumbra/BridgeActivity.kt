@@ -36,7 +36,10 @@ class BridgeActivity : EnglishActivity() {
                 val scope=rememberCoroutineScope()
                 LaunchedEffect(Unit) {
                     dialog=AppDialog.Confirm("Copy to work profile?","A separate copy of $appName will be installed in your work profile. Your personal app data and accounts will not be copied.","Copy") {
-                        if(!packageManager.canRequestPackageInstalls()) {
+                        val blocked=engine.installationBlockReason()
+                        if(blocked!=null) {
+                            dialog=AppDialog.Error(blocked)
+                        } else if(!packageManager.canRequestPackageInstalls()) {
                             dialog=AppDialog.Confirm("Allow app installation","Enable “Allow from this source” for Penumbra in Android settings, then copy the app again from the personal profile.","Open settings") {
                                 startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,Uri.parse("package:$packageName")))
                                 finish()

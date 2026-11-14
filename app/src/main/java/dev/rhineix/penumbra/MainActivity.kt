@@ -322,10 +322,12 @@ class MainActivity : EnglishActivity() {
                                 val sharing=remember(state.revision) {engine.sharingOptions()}
                                 SettingsToggle("Allow sharing to personal","Share or save work content in Personal, and select work files from personal apps",TablerIcons.Share,sharing.toPersonal,engine.canManage && !state.busy) {state.execute(scope) {engine.setSharingToPersonalAllowed(it)}}
                                 SettingsToggle("Allow sharing to work","Share or save personal content in Work, and select personal files from work apps",TablerIcons.Copy,sharing.toWork,engine.canManage && !state.busy) {state.execute(scope) {engine.setSharingToWorkAllowed(it)}}
-                                SettingsToggle("Open work files in personal apps","Include personal apps when opening a work file",TablerIcons.File,sharing.workFilesInPersonal,engine.canManage && !state.busy) {state.execute(scope) {engine.setWorkFilesInPersonalAllowed(it)}}
+                                SettingsToggle("Open work files in personal apps","Open or edit work files, including APKs, with personal apps",TablerIcons.File,sharing.workFilesInPersonal,engine.canManage && !state.busy) {state.execute(scope) {engine.setWorkFilesInPersonalAllowed(it)}}
+                                SettingsToggle("Open personal files in work apps","Open or edit personal files, including APKs, with work apps",TablerIcons.File,sharing.personalFilesInWork,engine.canManage && sharing.toWork && !state.busy) {state.execute(scope) {engine.setPersonalFilesInWorkAllowed(it)}}
                                 SettingsToggle("Open work links in personal apps","Include personal browsers and apps for work web links",TablerIcons.World,sharing.workLinksInPersonal,engine.canManage && !state.busy) {state.execute(scope) {engine.setWorkLinksInPersonalAllowed(it)}}
+                                SettingsToggle("Open personal links in work apps","Include work browsers and apps for personal web links",TablerIcons.World,sharing.personalLinksInWork,engine.canManage && sharing.toWork && !state.busy) {state.execute(scope) {engine.setPersonalLinksInWorkAllowed(it)}}
                             }
-                            Hint("Choose Personal or Work in Android’s share, open-with or file picker. Folder access requires sharing in both directions. Close and reopen an existing picker after changing these controls. Clipboard restrictions are controlled separately below.")
+                            Hint("Choose Personal or Work in Android’s share, open-with or file picker. Opening personal files or links in Work also requires Allow sharing to work. Folder access requires sharing in both directions. Close and reopen a picker after changing these controls. Files remain separate until you choose to share or save them.")
                         }
                         item {SectionTitle("Clipboard & installation")
                             SettingsGroup {
@@ -360,7 +362,7 @@ class MainActivity : EnglishActivity() {
                                 SettingsToggle("Block work caller ID","Hide work caller information in personal apps",TablerIcons.DeviceMobile,caller,engine.canManage && !state.busy) {state.execute(scope) {engine.callerId(it)}}
                             }
                         }
-                        item {Hint("Policy states are read from Android. Other device policies can prevent changes to some settings.")}
+                        item {Hint("Policy states are read from Android. APK installation also needs permission for the source identified by Android’s Install unknown apps settings. Check which profile those settings apply to. Other device policies and Android security rules can still prevent an action.")}
                     }
                     Page.Appearance -> {
                         item {SectionTitle("Display")

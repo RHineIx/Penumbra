@@ -13,7 +13,8 @@ class Preferences(context: Context) {
             val retained = setOf("language", "theme", "accent", "accent_v2", "monet", "navigationBlur", "captureGuard",
                 "showSystem", "profileName", "managedPackages", "pendingWorkCopy", "pendingWorkCopyTime",
                 "pendingWorkCopyProfile", "sharing.toPersonal", "sharing.openWorkFilesInPersonal",
-                "sharing.openWorkLinksInPersonal")
+                "sharing.openWorkLinksInPersonal", "sharing.openPersonalFilesInWork",
+                "sharing.openPersonalLinksInWork")
             store.edit().apply {
                 store.all.keys.filter { it !in retained }.forEach(::remove)
                 putInt("settingsSchema", 2)

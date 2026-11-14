@@ -11,6 +11,8 @@ internal data class SharingOptions(
     val toWork: Boolean = true,
     val workFilesInPersonal: Boolean = true,
     val workLinksInPersonal: Boolean = true,
+    val personalFilesInWork: Boolean = true,
+    val personalLinksInWork: Boolean = true,
 )
 internal data class ProfileRoute(val filter: IntentFilter, val direction: Int)
 
@@ -41,6 +43,7 @@ internal object CrossProfileRoutes {
             add(ProfileRoute(IntentFilter(action).apply {
                 addCategory(Intent.CATEGORY_DEFAULT)
                 addCategory(Intent.CATEGORY_OPENABLE)
+                addCategory(Intent.CATEGORY_TYPED_OPENABLE)
                 addDataType("*/*")
             }, direction))
         }
@@ -59,6 +62,40 @@ internal object CrossProfileRoutes {
                 addDataType("image/*")
                 addDataType("video/*")
             }, direction))
+        }
+        fun fileFilter(action: String, type: String? = null) = IntentFilter(action).apply {
+            addCategory(Intent.CATEGORY_DEFAULT)
+            addCategory(Intent.CATEGORY_BROWSABLE)
+            addCategory(Intent.CATEGORY_OPENABLE)
+            addCategory(Intent.CATEGORY_TYPED_OPENABLE)
+            addDataScheme("content")
+            addDataScheme("file")
+            if (type != null) addDataType(type)
+        }
+        @Suppress("DEPRECATION")
+        fun openFiles(direction: Int) {
+            // A type-only filter does not match providers that return no MIME type.
+            // Keep those requests separate instead of turning this into a catch-all route.
+            for (action in listOf(Intent.ACTION_VIEW, Intent.ACTION_EDIT)) {
+                add(ProfileRoute(fileFilter(action, "*/*"), direction))
+                add(ProfileRoute(fileFilter(action), direction))
+            }
+            // Some apps request installation directly instead of viewing the APK.
+            add(ProfileRoute(fileFilter(Intent.ACTION_INSTALL_PACKAGE,
+                "application/vnd.android.package-archive"), direction))
+            add(ProfileRoute(fileFilter(Intent.ACTION_INSTALL_PACKAGE), direction))
+        }
+        fun openLinks(direction: Int) {
+            // Browsers may supply text/html; ordinary web links have no MIME type.
+            for (type in listOf(null, "*/*")) {
+                add(ProfileRoute(IntentFilter(Intent.ACTION_VIEW).apply {
+                    addCategory(Intent.CATEGORY_DEFAULT)
+                    addCategory(Intent.CATEGORY_BROWSABLE)
+                    addDataScheme("http")
+                    addDataScheme("https")
+                    if (type != null) addDataType(type)
+                }, direction))
+            }
         }
         if (options.toPersonal) {
             share(workToPersonal)
@@ -81,13 +118,10 @@ internal object CrossProfileRoutes {
                 }, direction))
             }
         }
-        if (options.workFilesInPersonal) add(ProfileRoute(IntentFilter(Intent.ACTION_VIEW).apply {
-            addCategory(Intent.CATEGORY_DEFAULT); addCategory(Intent.CATEGORY_BROWSABLE)
-            addDataType("*/*"); addDataScheme("content"); addDataScheme("file")
-        }, workToPersonal))
-        if (options.workLinksInPersonal) add(ProfileRoute(IntentFilter(Intent.ACTION_VIEW).apply {
-            addCategory(Intent.CATEGORY_DEFAULT); addCategory(Intent.CATEGORY_BROWSABLE)
-            addDataScheme("http"); addDataScheme("https")
-        }, workToPersonal))
+        if (options.workFilesInPersonal) openFiles(workToPersonal)
+        if (options.workLinksInPersonal) openLinks(workToPersonal)
+        // The incoming restriction applies to file/link opening as well as SEND intents.
+        if (options.toWork && options.personalFilesInWork) openFiles(personalToWork)
+        if (options.toWork && options.personalLinksInWork) openLinks(personalToWork)
     }
 }
